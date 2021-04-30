@@ -1,8 +1,7 @@
+require("dotenv").config();
 const Msg = require("./models/messages");
 const mongoose = require("mongoose");
-const mongoDB =
-  "mongodb+srv://admin:admin@cluster0.t5fz6.mongodb.net/message-database";
-
+const mongoDB = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@${process.env.DB_HOST}/${process.env.DB_NAME}`;
 mongoose
   .connect(mongoDB, { useNewUrlParser: true }, { useUnifiedTopology: true })
   .then(() => {
