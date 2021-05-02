@@ -62,19 +62,46 @@
 </head>
 
 <body>
+    <input type="text" id="username" name="username" class="form-control" placeholder="Enter name...">
+    <br>
+
     <ul id="messages"></ul>
     <form id="form" action="">
-        <input id="input" name="msg" autocomplete="off" /><button>Send</button>
+        <input id="message_input" name="msg" autocomplete="off" /><button>Send</button>
     </form>
 </body>
 <script src="/socket.io/socket.io.js"></script>
 <script>
+
     var socket = io();
     var form = document.getElementById('form');
-    var input = document.getElementById('input');
+    var input = document.getElementById('message_input');
+    var name = document.getElementById('username');
+
+    var statusDefault = status.textContent;
+
+    var setStatus = function (s) {
+        // Set status
+        status.textContent = s;
+
+        if (s !== statusDefault) {
+            var delay = setTimeout(function () {
+                setStatus(statusDefault);
+            }, 4000);
+        }
+    }
+    socket.on('status', function (data) {
+        console.log(data);
+        // get message status
+        setStatus((typeof data === 'object') ? data.message : data);
+
+        // If status is clear, clear text
+        if (data.clear) {
+            input.value = '';
+        }
+    });
 
     socket.on('output-messages', data => {
-        console.log(data)
         if (data.length) {
             data.forEach(message => {
                 appendMessages(message)
@@ -82,38 +109,51 @@
         }
     })
 
-    form.addEventListener('submit', function (e) {
-        e.preventDefault();
 
+    form.addEventListener('submit', function (e) {
+
+        e.preventDefault();
         if (form.msg.value) {
-            socket.emit('chat message', form.msg.value);
-            input.value = '';
+            socket.emit('chat message',
+                {
+                    name: username.value,
+                    msg: form.msg.value
+                });
+            input.value = "";
         }
-        window.location.reload();
+
     });
+
+
     socket.on('chat message', function (msg) {
+        console.log(msg)
         var item = document.createElement('li');
-        item.textContent = msg;
+        item.textContent = msg.name + " : " + msg.msg;
+        var button = document.createElement("button");
+        button.innerHTML = "Delete";
+        button.setAttribute("id", `message-${msg._id}`)
+        button.setAttribute("data-id", `${msg._id}`)
+        button.setAttribute("onclick","deleteMessage(this)")
+
         messages.appendChild(item);
-        window.scrollTo(0, document.body.scrollHeight);
+        item.appendChild(button)
+
     });
 
     function appendMessages(message) {
-        const html = `<div>${message.msg}<button id="message-${message._id}" data-id=${message._id} onclick='deleteMessage(this);'> Delete </button></div>`
+        const html = `<div>${message.name} : ${message.msg}<button id="message-${message._id}" data-id=${message._id} onclick='deleteMessage(this);'> Delete </button></div>`
         messages.innerHTML += html
         // messages.innerHTML += `<button id="message-${message._id}" data-id=${message._id} onclick='deleteMessage(this);'> Delete </button>`
-     
+
 
     }
     function deleteMessage(self) {
         var id = self.getAttribute('data-id')
-
         socket.emit("delete_message", id);
     }
 
     socket.on("delete_message", function (id) {
         var node = document.getElementById("message-" + id)
-        console.log(node)
         node.parentNode.innerHTML = "This message have been deleted";
 
     })
